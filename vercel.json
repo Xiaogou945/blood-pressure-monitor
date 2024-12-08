@@ -20,7 +20,7 @@
     ],
     "env": {
         "FLASK_ENV": "production",
-        "FLASK_APP": "app.py",
+        "FLASK_APP": "vercel_app.py",
         "PYTHON_VERSION": "3.9",
         "PYTHONPATH": ".",
         "DEBUG": "true"
