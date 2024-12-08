@@ -1,9 +1,20 @@
 import os
 from dotenv import load_dotenv
+from urllib.parse import urlparse
 
 # 在开发环境中加载.env文件
 if os.path.exists('.env'):
     load_dotenv()
+
+def get_safe_db_url(url):
+    """安全地处理数据库 URL，移除敏感信息"""
+    if not url:
+        return None
+    try:
+        parsed = urlparse(url)
+        return f"{parsed.scheme}://{parsed.hostname}"
+    except Exception:
+        return None
 
 class Config:
     # 基本配置
@@ -22,7 +33,9 @@ class Config:
         db_name = os.getenv('POSTGRES_DATABASE')
         
         if all([db_user, db_password, db_host, db_name]):
-            SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}/{db_name}?sslmode=require"
+            SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}/{db_name}"
+            if 'aws.neon.tech' in db_host:  # Neon 数据库需要 SSL
+                SQLALCHEMY_DATABASE_URI += "?sslmode=require"
         else:
             # 如果环境变量不完整，使用SQLite作为后备
             SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'
@@ -40,9 +53,8 @@ class Config:
     @classmethod
     def log_config(cls):
         db_url = cls.SQLALCHEMY_DATABASE_URI
-        if 'postgres' in db_url:
-            # 隐藏敏感信息
-            print("Using PostgreSQL database")
-            print(f"Database host: {db_url.split('@')[1].split('/')[0] if '@' in db_url else 'unknown'}")
+        safe_url = get_safe_db_url(db_url)
+        if safe_url:
+            print(f"使用数据库: {safe_url}")
         else:
-            print("Using SQLite database")
+            print("使用SQLite数据库")
