@@ -1,21 +1,14 @@
 from flask import Flask, request, jsonify, render_template
-from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date, timedelta
 import pandas as pd
 from config import Config
+from database import db, BloodPressure, init_app
 
 app = Flask(__name__)
 app.config.from_object(Config)
 
-db = SQLAlchemy(app)
-
-class BloodPressure(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    systolic = db.Column(db.Integer, nullable=False)  # 收缩压
-    diastolic = db.Column(db.Integer, nullable=False)  # 舒张压
-    measure_date = db.Column(db.Date, nullable=False)  # 测量日期
-    timestamp = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    note = db.Column(db.String(200))
+# 初始化数据库
+init_app(app)
 
 def analyze_blood_pressure(systolic, diastolic):
     # 血压分析标准（根据中国高血压防治指南）

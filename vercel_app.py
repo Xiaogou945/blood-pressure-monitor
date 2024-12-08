@@ -1,7 +1,8 @@
 import os
 import sys
 from flask import Flask, jsonify
-from app import app, db
+from app import app
+from database import db, init_app
 import logging
 from config import Config
 
@@ -26,7 +27,7 @@ def log_environment():
         else:
             logger.info(f"{var}: {value}")
 
-def init_db():
+def init_database():
     try:
         # 记录环境信息
         log_environment()
@@ -34,25 +35,25 @@ def init_db():
         # 记录数据库配置信息
         Config.log_config()
         
-        with app.app_context():
-            # 测试数据库连接
-            try:
+        # 测试数据库连接
+        try:
+            with app.app_context():
                 db.session.execute('SELECT 1')
                 logger.info("Database connection test successful")
-            except Exception as e:
-                logger.error(f"Database connection test failed: {str(e)}")
-                raise
+        except Exception as e:
+            logger.error(f"Database connection test failed: {str(e)}")
+            raise
             
-            # 创建数据库表
-            try:
-                db.create_all()
-                logger.info("Database tables created successfully")
-            except Exception as e:
-                logger.error(f"Failed to create database tables: {str(e)}")
-                raise
+        # 初始化数据库
+        try:
+            init_app(app)
+            logger.info("Database initialized successfully")
+        except Exception as e:
+            logger.error(f"Failed to initialize database: {str(e)}")
+            raise
             
     except Exception as e:
-        logger.error(f"Error initializing database: {str(e)}")
+        logger.error(f"Error in database initialization: {str(e)}")
         logger.error(f"Python version: {sys.version}")
         raise
 
@@ -63,7 +64,7 @@ def handle_500_error(error):
 
 try:
     # Initialize the database when the application starts
-    init_db()
+    init_database()
     logger.info("Application initialized successfully")
 except Exception as e:
     logger.error(f"Application initialization failed: {str(e)}")
