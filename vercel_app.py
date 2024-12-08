@@ -1,11 +1,10 @@
 import os
 import sys
 import traceback
+import logging
 from flask import Flask, jsonify, current_app
 from config import Config
 from database import init_app, db, test_db_connection
-import logging
-from urllib.parse import urlparse
 
 # 配置日志
 logging.basicConfig(
@@ -23,16 +22,6 @@ if not init_app(app):
     logger.error("数据库初始化失败")
     raise Exception("数据库初始化失败")
 
-def get_safe_db_url(url):
-    """安全地处理数据库 URL，移除敏感信息"""
-    if not url:
-        return "未设置"
-    try:
-        parsed = urlparse(url)
-        return f"{parsed.scheme}://{parsed.hostname}"
-    except Exception:
-        return "无效的URL格式"
-
 def log_environment():
     """记录重要的环境变量"""
     env_vars = [
@@ -46,7 +35,7 @@ def log_environment():
         if var in ['POSTGRES_URL']:  # 敏感信息不要完整记录
             logger.info(f"{var} 已设置: {'是' if value else '否'}")
             if value:
-                logger.info(f"{var} 连接信息: {get_safe_db_url(value)}")
+                logger.info(f"{var} 连接信息: {Config.get_safe_db_url(value)}")
         else:
             logger.info(f"{var}: {value}")
     
@@ -67,7 +56,7 @@ def debug():
         debug_info = {
             'python_version': sys.version,
             'env_vars': {k: v for k, v in os.environ.items() if not any(secret in k.lower() for secret in ['password', 'secret', 'key'])},
-            'database_url': get_safe_db_url(app.config['SQLALCHEMY_DATABASE_URI']),
+            'database_url': Config.get_safe_db_url(app.config['SQLALCHEMY_DATABASE_URI']),
             'database_status': db_status
         }
         return jsonify(debug_info)
