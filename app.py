@@ -9,9 +9,7 @@ app.config.from_object(Config)
 
 db = SQLAlchemy(app)
 
-# 确保在第一次请求时创建数据库表
-@app.before_first_request
-def create_tables():
+with app.app_context():
     db.create_all()
 
 class BloodPressure(db.Model):
