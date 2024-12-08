@@ -2,10 +2,9 @@ import os
 import sys
 import traceback
 from flask import Flask, jsonify, current_app
-from app import app
+from config import Config
 from database import init_app, db, test_db_connection
 import logging
-from config import Config
 from urllib.parse import urlparse
 
 # 配置日志
@@ -14,6 +13,15 @@ logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
 )
 logger = logging.getLogger(__name__)
+
+# 创建应用
+app = Flask(__name__)
+app.config.from_object(Config)
+
+# 初始化数据库
+if not init_app(app):
+    logger.error("数据库初始化失败")
+    raise Exception("数据库初始化失败")
 
 def get_safe_db_url(url):
     """安全地处理数据库 URL，移除敏感信息"""
@@ -45,79 +53,40 @@ def log_environment():
     logger.info(f"Python 版本: {sys.version}")
     logger.info(f"Python 路径: {sys.path}")
 
-def init_database():
-    """初始化数据库"""
-    try:
-        # 记录环境信息
-        log_environment()
-        
-        # 记录数据库配置信息
-        Config.log_config()
-        
-        # 测试数据库连接
-        if not test_db_connection(app):
-            raise Exception("数据库连接测试失败")
-        
-        # 初始化数据库
-        if not init_app(app):
-            raise Exception("数据库初始化失败")
-            
-        logger.info("数据库初始化完成")
-        return None
-            
-    except Exception as e:
-        error_msg = f"数据库初始化过程中出错: {str(e)}"
-        logger.error(error_msg)
-        logger.error(f"错误堆栈: {traceback.format_exc()}")
-        if os.getenv('FLASK_ENV') != 'production':
-            raise
-        return error_msg
-
-@app.errorhandler(Exception)
-def handle_exception(error):
-    """处理所有未捕获的异常"""
-    error_info = {
-        "error": "服务器内部错误",
-        "message": str(error),
-        "type": error.__class__.__name__
-    }
-    if os.getenv('DEBUG') == 'true':
-        error_info["traceback"] = traceback.format_exc()
-    
-    logger.error(f"未捕获的异常: {error_info}")
-    return jsonify(error_info), 500
+@app.route('/')
+def home():
+    return 'Blood Pressure Monitor API'
 
 @app.route('/debug')
 def debug():
-    """调试端点，返回环境信息"""
+    """返回调试信息的端点"""
     try:
-        with app.app_context():
-            db_url = app.config.get('SQLALCHEMY_DATABASE_URI')
-            info = {
-                "python_version": sys.version,
-                "env_vars": {
-                    k: v for k, v in os.environ.items() 
-                    if not any(x in k.lower() for x in ['password', 'secret', 'key'])
-                },
-                "config": {
-                    "database_type": "postgres" if db_url and "postgres" in db_url else "sqlite",
-                    "debug_mode": app.debug,
-                    "testing_mode": app.testing,
-                    "database_url": get_safe_db_url(db_url)
-                }
-            }
-            return jsonify(info)
+        # 测试数据库连接
+        db_status = test_db_connection(app)
+        
+        debug_info = {
+            'python_version': sys.version,
+            'env_vars': {k: v for k, v in os.environ.items() if not any(secret in k.lower() for secret in ['password', 'secret', 'key'])},
+            'database_url': get_safe_db_url(app.config['SQLALCHEMY_DATABASE_URI']),
+            'database_status': db_status
+        }
+        return jsonify(debug_info)
     except Exception as e:
-        logger.error(f"调试端点出错: {str(e)}")
-        logger.error(f"错误堆栈: {traceback.format_exc()}")
-        return jsonify({"error": str(e)}), 500
+        current_app.logger.error(f"调试端点错误: {str(e)}\n{traceback.format_exc()}")
+        return jsonify({
+            'error': str(e),
+            'traceback': traceback.format_exc()
+        }), 500
 
-# 初始化应用
-init_error = init_database()
-if init_error:
-    logger.warning(f"应用初始化时出现警告: {init_error}")
-else:
-    logger.info("应用初始化成功")
+@app.errorhandler(Exception)
+def handle_error(error):
+    """全局错误处理器"""
+    current_app.logger.error(f"未处理的异常: {str(error)}\n{traceback.format_exc()}")
+    return jsonify({
+        'error': str(error),
+        'type': error.__class__.__name__
+    }), 500
 
-# Vercel需要一个app对象
-application = app
+if __name__ == '__main__':
+    log_environment()
+    app.run(debug=True)
