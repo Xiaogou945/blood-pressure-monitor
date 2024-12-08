@@ -3,7 +3,7 @@ import sys
 import traceback
 from flask import Flask, jsonify, current_app
 from app import app
-from database import db, init_app
+from database import db, init_app, test_db_connection
 import logging
 from config import Config
 from urllib.parse import urlparse
@@ -46,6 +46,7 @@ def log_environment():
     logger.info(f"Python 路径: {sys.path}")
 
 def init_database():
+    """初始化数据库"""
     try:
         # 记录环境信息
         log_environment()
@@ -54,30 +55,23 @@ def init_database():
         Config.log_config()
         
         # 测试数据库连接
-        try:
-            with app.app_context():
-                result = db.session.execute('SELECT 1').scalar()
-                logger.info(f"数据库连接测试成功: {result}")
-        except Exception as e:
-            logger.error(f"数据库连接测试失败: {str(e)}")
-            logger.error(f"错误堆栈: {traceback.format_exc()}")
-            raise
-            
+        if not test_db_connection(app):
+            raise Exception("数据库连接测试失败")
+        
         # 初始化数据库
-        try:
-            init_app(app)
-            logger.info("数据库初始化成功")
-        except Exception as e:
-            logger.error(f"数据库初始化失败: {str(e)}")
-            logger.error(f"错误堆栈: {traceback.format_exc()}")
-            raise
+        if not init_app(app):
+            raise Exception("数据库初始化失败")
+            
+        logger.info("数据库初始化完成")
+        return None
             
     except Exception as e:
-        logger.error(f"数据库初始化过程中出错: {str(e)}")
+        error_msg = f"数据库初始化过程中出错: {str(e)}"
+        logger.error(error_msg)
         logger.error(f"错误堆栈: {traceback.format_exc()}")
         if os.getenv('FLASK_ENV') != 'production':
             raise
-        return str(e)
+        return error_msg
 
 @app.errorhandler(Exception)
 def handle_exception(error):
@@ -85,9 +79,11 @@ def handle_exception(error):
     error_info = {
         "error": "服务器内部错误",
         "message": str(error),
-        "type": error.__class__.__name__,
-        "traceback": traceback.format_exc()
+        "type": error.__class__.__name__
     }
+    if os.getenv('DEBUG') == 'true':
+        error_info["traceback"] = traceback.format_exc()
+    
     logger.error(f"未捕获的异常: {error_info}")
     return jsonify(error_info), 500
 
@@ -96,14 +92,17 @@ def debug():
     """调试端点，返回环境信息"""
     try:
         with app.app_context():
-            db_url = Config.SQLALCHEMY_DATABASE_URI
+            db_url = app.config.get('SQLALCHEMY_DATABASE_URI')
             info = {
                 "python_version": sys.version,
-                "env_vars": {k: v for k, v in os.environ.items() if not k.lower().startswith('password')},
+                "env_vars": {
+                    k: v for k, v in os.environ.items() 
+                    if not any(x in k.lower() for x in ['password', 'secret', 'key'])
+                },
                 "config": {
                     "database_type": "postgres" if db_url and "postgres" in db_url else "sqlite",
-                    "debug_mode": current_app.debug,
-                    "testing_mode": current_app.testing,
+                    "debug_mode": app.debug,
+                    "testing_mode": app.testing,
                     "database_url": get_safe_db_url(db_url)
                 }
             }
