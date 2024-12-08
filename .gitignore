@@ -1,27 +1,16 @@
 # Python
 __pycache__/
-*.py[cod]
-*$py.class
-*.so
+*.pyc
+*.pyo
+*.pyd
 .Python
 env/
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
+venv/
 *.egg-info/
 .installed.cfg
 *.egg
 
 # Virtual Environment
-venv/
 ENV/
 
 # IDE
@@ -32,7 +21,6 @@ ENV/
 
 # Database
 *.db
-*.sqlite3
 
 # Environment variables
 .env
@@ -48,3 +36,4 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+.vercel
