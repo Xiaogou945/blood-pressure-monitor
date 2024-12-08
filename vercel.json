@@ -7,8 +7,14 @@
             "config": {
                 "maxLambdaSize": "15mb",
                 "runtime": "python3.9",
-                "includeFiles": ["**/*.py"],
-                "excludeFiles": ["**/*.pyc", "**/__pycache__/**"]
+                "includeFiles": [
+                    "*.py",
+                    "**/*.py"
+                ],
+                "excludeFiles": [
+                    "**/*.pyc",
+                    "**/__pycache__/**"
+                ]
             }
         }
     ],
