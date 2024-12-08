@@ -3,7 +3,7 @@ import sys
 import traceback
 from flask import Flask, jsonify, current_app
 from app import app
-from database import db, init_app, test_db_connection
+from database import init_db, db, test_db_connection
 import logging
 from config import Config
 from urllib.parse import urlparse
@@ -59,7 +59,7 @@ def init_database():
             raise Exception("数据库连接测试失败")
         
         # 初始化数据库
-        if not init_app(app):
+        if not init_db(app):
             raise Exception("数据库初始化失败")
             
         logger.info("数据库初始化完成")

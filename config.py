@@ -16,6 +16,10 @@ def get_safe_db_url(url):
     except Exception:
         return None
 
+def is_neon_db(host):
+    """检查是否是 Neon 数据库"""
+    return host and isinstance(host, str) and 'neon.tech' in host
+
 class Config:
     # 基本配置
     SECRET_KEY = os.getenv('SECRET_KEY', 'dev-key-change-this')
@@ -34,7 +38,7 @@ class Config:
         
         if all([db_user, db_password, db_host, db_name]):
             SQLALCHEMY_DATABASE_URI = f"postgresql://{db_user}:{db_password}@{db_host}/{db_name}"
-            if 'aws.neon.tech' in db_host:  # Neon 数据库需要 SSL
+            if is_neon_db(db_host):  # Neon 数据库需要 SSL
                 SQLALCHEMY_DATABASE_URI += "?sslmode=require"
         else:
             # 如果环境变量不完整，使用SQLite作为后备
