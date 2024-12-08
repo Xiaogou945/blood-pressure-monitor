@@ -9,9 +9,6 @@ app.config.from_object(Config)
 
 db = SQLAlchemy(app)
 
-with app.app_context():
-    db.create_all()
-
 class BloodPressure(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     systolic = db.Column(db.Integer, nullable=False)  # 收缩压
